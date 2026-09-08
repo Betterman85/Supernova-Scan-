@@ -5,10 +5,16 @@
 *{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--fg);font:15px/1.5 -apple-system,BlinkMacSystemFont,'Segoe UI',system-ui,sans-serif;padding:24px 16px}
 .wrap{max-width:820px;margin:0 auto;display:flex;flex-direction:column;gap:16px}
 h1{font-size:21px;margin:0}.meta{color:var(--dim);font-size:13px;font-variant-numeric:tabular-nums}
+.acctbar{display:flex;align-items:center;gap:8px;margin-top:9px;flex-wrap:wrap}
+.acctbar label{font-size:12.5px;color:var(--dim)}
+.acctbar input{width:130px;font:inherit;padding:6px 9px;border:1px solid var(--line);border-radius:8px;background:var(--card);color:var(--fg);font-variant-numeric:tabular-nums}
 h2{font-size:12px;text-transform:uppercase;letter-spacing:.08em;color:var(--dim);margin:10px 0 0}
 .card{background:var(--card);border:1px solid var(--line);border-left:4px solid var(--good);border-radius:12px;padding:14px 16px;display:flex;flex-direction:column;gap:7px}
 .r1{display:flex;align-items:center;gap:10px;flex-wrap:wrap}.tk{font-size:20px;font-weight:700;letter-spacing:.02em}
 .px{font-size:16px;font-variant-numeric:tabular-nums}.gap{color:var(--gapc);font-weight:700;font-size:14px}
+.conv-badge{font-size:11.5px;font-weight:700;padding:2px 9px;border-radius:999px;letter-spacing:.02em;white-space:nowrap}
+.conv-hi{background:rgba(26,127,75,.16);color:var(--good)}
+.conv-lo{background:rgba(176,106,0,.16);color:var(--gapc)}
 .borrow{margin-left:auto;font-size:11px;color:var(--dim);font-family:ui-monospace,monospace}
 .stats{display:flex;flex-wrap:wrap;gap:12px;font-size:12.5px;color:var(--dim);font-variant-numeric:tabular-nums}
 .lv{font-size:12.5px;color:var(--dim);font-variant-numeric:tabular-nums}
@@ -21,9 +27,45 @@ h2{font-size:12px;text-transform:uppercase;letter-spacing:.08em;color:var(--dim)
 th,td{text-align:left;padding:8px 11px;border-bottom:1px solid var(--line);font-variant-numeric:tabular-nums}th{color:var(--dim);font-size:11px;text-transform:uppercase}tr:last-child td{border:0}
 .foot{color:var(--dim);font-size:11.5px;border-top:1px solid var(--line);padding-top:12px}
 </style></head><body><div class='wrap'>
-<div><h1>Supernova Scan · 2026-09-08</h1><div class='meta'>generated 2026-09-08 12:17 ET · acct $15,000 · conviction 22/8 · flatten −8%</div></div>
+<div><h1>Supernova Scan · 2026-09-08</h1><div class='meta'>generated 2026-09-08 14:39 ET · conviction 22/8 · flatten −8%</div>
+<div class='acctbar' data-flatten='0.08' data-maxvol='0.01' data-riskpct=''><label for='acct'>Account size $</label><input id='acct' type='number' min='0' step='500' value='15000'><span class='meta'>← shares update as you type (saved on this device)</span></div></div>
 <h2>Tradable (0)</h2>
 <div class='empty'>No tradable setups yet. Quiet tape — check back, or the day has no gap≥100% names.</div>
 
 <div class='foot'>Data: Alpaca (RAW). Borrow tag is Alpaca's — verify real locate in DAS/Cobra. Prices ~15-min delayed on this plan. Not advice; paper/validate first.</div>
-</div></body></html>
+</div><script>
+(function(){
+  var bar=document.querySelector('.acctbar'); if(!bar) return;
+  var input=document.getElementById('acct'); if(!input) return;
+  var MAXVOL=parseFloat(bar.dataset.maxvol||'0.01');
+  var FLATTEN=parseFloat(bar.dataset.flatten||'0.08');
+  var RISKPCT=(bar.dataset.riskpct!==undefined && bar.dataset.riskpct!=='')?parseFloat(bar.dataset.riskpct):null;
+  function fmtInt(n){return Math.round(n).toLocaleString('en-US');}
+  function money(n){return '$'+Math.round(n).toLocaleString('en-US');}
+  function sizeShares(eq,entry,dvol,w){
+    var tgt=eq*w/entry;
+    var cap=dvol>0?(MAXVOL*dvol/entry):tgt;
+    return Math.max(0,Math.floor(Math.min(tgt,cap)));
+  }
+  function recalc(){
+    var eq=parseFloat(input.value); if(!(eq>0)) eq=0;
+    document.querySelectorAll('.card').forEach(function(card){
+      var entry=parseFloat(card.dataset.entry), w=parseFloat(card.dataset.w), dvol=parseFloat(card.dataset.dvol);
+      if(!(entry>0)||!(w>0)) return;
+      var sh=sizeShares(eq,entry,dvol,w), notional=sh*entry, risk, stop;
+      if(RISKPCT!==null){ risk=RISKPCT/100*eq; stop=sh?entry+(RISKPCT/100*eq)/sh:entry; }
+      else { risk=FLATTEN*eq; stop=w?entry*(1+FLATTEN/w):entry; }
+      var pct=entry?(stop/entry-1)*100:0, e;
+      e=card.querySelector('.js-shares'); if(e) e.textContent='short '+fmtInt(sh)+' sh';
+      e=card.querySelector('.js-notional'); if(e) e.textContent=money(notional);
+      e=card.querySelector('.js-stop'); if(e) e.textContent='$'+stop.toFixed(2);
+      e=card.querySelector('.js-risk'); if(e) e.textContent='+'+Math.round(pct)+'% \u00b7 risk '+money(risk);
+    });
+    try{ localStorage.setItem('supernova_acct',String(eq)); }catch(err){}
+  }
+  var saved=null; try{ saved=localStorage.getItem('supernova_acct'); }catch(err){}
+  if(saved!==null && parseFloat(saved)>0) input.value=parseFloat(saved);
+  input.addEventListener('input',recalc);
+  recalc();
+})();
+</script></body></html>
